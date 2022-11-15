@@ -155,6 +155,7 @@ set(MUMBLE_SOURCES
 	"GlobalShortcutButtons.ui"
 	"GlobalShortcutTarget.ui"
 	"GlobalShortcutTypes.h"
+	"IPCUtils.h"
 	"JSONSerialization.cpp"
 	"JSONSerialization.h"
 	"LCD.cpp"
@@ -655,6 +656,9 @@ else()
 		if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
 			find_library(LIB_RT rt)
 			target_link_libraries(mumble_client_object_lib PUBLIC ${LIB_RT})
+			target_sources(mumble_client_object_lib PRIVATE "IPCUtils_linux.cpp")
+		else()
+			target_sources(mumble_client_object_lib PRIVATE "IPCUtils_unix.cpp")
 		endif()
 
 		target_link_libraries(mumble_client_object_lib PUBLIC X11::Xext)
@@ -672,6 +676,7 @@ else()
 				"AppNap.mm"
 				"GlobalShortcut_macx.h"
 				"GlobalShortcut_macx.mm"
+				"IPCUtils_macx.cpp"
 				"Log_macx.mm"
 				"os_macx.mm"
 		)

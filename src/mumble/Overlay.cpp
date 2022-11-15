@@ -8,6 +8,7 @@
 #include "Channel.h"
 #include "ClientUser.h"
 #include "Database.h"
+#include "IPCUtils.h"
 #include "MainWindow.h"
 #include "OverlayClient.h"
 #include "OverlayText.h"
@@ -243,15 +244,7 @@ void Overlay::createPipe() {
 	pipepath = QLatin1String("MumbleOverlayPipe");
 #else
 	{
-		QString xdgRuntimePath = QProcessEnvironment::systemEnvironment().value(QLatin1String("XDG_RUNTIME_DIR"));
-		QString mumbleRuntimePath;
-		if (!xdgRuntimePath.isNull()) {
-		    mumbleRuntimePath = QDir(xdgRuntimePath).absolutePath() + QLatin1String("/mumble/");
-		} else {
-			mumbleRuntimePath = QLatin1String("/run/user/") + QString::number(getuid()) + QLatin1String("/mumble/");
-		}
-		QDir mumbleRuntimeDir = QDir(mumbleRuntimePath);
-		mumbleRuntimeDir.mkpath(".");
+		QDir mumbleRuntimeDir = Mumble::getRuntimeDir();
 		pipepath = mumbleRuntimeDir.absoluteFilePath(QLatin1String("MumbleOverlayPipe"));
 	}
 
