@@ -9,13 +9,14 @@
 
 #include "../../overlay/overlay.h"
 
+#include "IPCUtils.h"
 #include "SharedMemory.h"
 #include "Timer.h"
 
 #ifdef Q_OS_WIN
 #	include "win.h"
 #else
-#   include <unistd.h>
+#	include <unistd.h>
 #endif
 
 #include <QtCore>
@@ -25,7 +26,6 @@
 #include <QWidget>
 #include <QMainWindow>
 #include <QApplication>
-
 
 class OverlayWidget : public QWidget {
 	Q_OBJECT
@@ -101,15 +101,7 @@ void OverlayWidget::paintEvent(QPaintEvent *) {
 #ifdef Q_OS_WIN
 		qlsSocket->connectToServer(QLatin1String("MumbleOverlayPipe"));
 #else
-		QString xdgRuntimePath = QProcessEnvironment::systemEnvironment().value(QLatin1String("XDG_RUNTIME_DIR"));
-		QString mumbleRuntimePath;
-		if (!xdgRuntimePath.isNull()) {
-		    mumbleRuntimePath = QDir(xdgRuntimePath).absolutePath() + QLatin1String("/mumble/");
-		} else {
-			mumbleRuntimePath = QLatin1String("/run/user/") + QString::number(getuid()) + QLatin1String("/mumble/");
-		}
-		QDir mumbleRuntimeDir = QDir(mumbleRuntimePath);
-		mumbleRuntimeDir.mkpath(".");
+		QDir mumbleRuntimeDir = Mumble::getRuntimeDir();
 		QString pipepath = mumbleRuntimeDir.absoluteFilePath(QLatin1String("MumbleOverlayPipe"));
 		qWarning() << "connectToServer(" << pipepath << ")";
 		qlsSocket->connectToServer(pipepath);

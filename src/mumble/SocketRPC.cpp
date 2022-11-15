@@ -7,6 +7,7 @@
 
 #include "Channel.h"
 #include "ClientUser.h"
+#include "IPCUtils.h"
 #include "MainWindow.h"
 #include "ServerHandler.h"
 #include "Global.h"
@@ -235,15 +236,7 @@ SocketRPC::SocketRPC(const QString &basename, QObject *p) : QObject(p) {
 	pipepath = basename;
 #else
 	{
-		QString xdgRuntimePath = QProcessEnvironment::systemEnvironment().value(QLatin1String("XDG_RUNTIME_DIR"));
-		QString mumbleRuntimePath;
-		if (!xdgRuntimePath.isNull()) {
-		    mumbleRuntimePath = QDir(xdgRuntimePath).absolutePath() + QLatin1String("/mumble/");
-		} else {
-			mumbleRuntimePath = QLatin1String("/run/user/") + QString::number(getuid()) + QLatin1String("/mumble/");
-		}
-		QDir mumbleRuntimeDir = QDir(mumbleRuntimePath);
-		mumbleRuntimeDir.mkpath(".");
+		QDir mumbleRuntimeDir = Mumble::getRuntimeDir();
 		pipepath = mumbleRuntimeDir.absoluteFilePath(basename + QLatin1String("Socket"));
 	}
 
@@ -281,15 +274,7 @@ bool SocketRPC::send(const QString &basename, const QString &request, const QMap
 	pipepath = basename;
 #else
 	{
-		QString xdgRuntimePath = QProcessEnvironment::systemEnvironment().value(QLatin1String("XDG_RUNTIME_DIR"));
-		QString mumbleRuntimePath;
-		if (!xdgRuntimePath.isNull()) {
-		    mumbleRuntimePath = QDir(xdgRuntimePath).absolutePath() + QLatin1String("/mumble/");
-		} else {
-			mumbleRuntimePath = QLatin1String("/run/user/") + QString::number(getuid()) + QLatin1String("/mumble/");
-		}
-		QDir mumbleRuntimeDir = QDir(mumbleRuntimePath);
-		mumbleRuntimeDir.mkpath(".");
+		QDir mumbleRuntimeDir = Mumble::getRuntimeDir();
 		pipepath = mumbleRuntimeDir.absoluteFilePath(basename + QLatin1String("Socket"));
 	}
 #endif
@@ -329,4 +314,3 @@ bool SocketRPC::send(const QString &basename, const QString &request, const QMap
 
 	return QVariant(succ.text()).toBool();
 }
-
