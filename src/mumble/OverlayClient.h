@@ -30,7 +30,8 @@ private:
 protected:
 	OverlayMsg omMsg;
 	QLocalSocket *qlsSocket;
-	SharedMemory2 *smMem;
+	QByteArray *bArr;
+//	SharedMemory2 *smMem;
 	QRect qrLast;
 	Timer t;
 

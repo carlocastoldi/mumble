@@ -36,6 +36,7 @@ OverlayClient::OverlayClient(QLocalSocket *socket, QObject *p)
 	connect(qlsSocket, SIGNAL(readyRead()), this, SLOT(readyRead()));
 
 	omMsg.omh.iLength = -1;
+	bArr              = nullptr;
 //	smMem             = nullptr;
 	uiWidth = uiHeight = 0;
 
@@ -386,6 +387,8 @@ void OverlayClient::readyReadMsgInit(unsigned int length) {
 	qrLast   = QRect();
 	qWarning() << "uiWidth:" << uiWidth << "uiHeight:" << uiHeight << "qrLast:" << qrLast;
 
+	delete bArr;
+	bArr = new QByteArray(uiWidth * uiHeight * OVERLAY_N_COLOUR_CHANNELS, static_cast< char >(0));
 /*
 	delete smMem;
 
@@ -409,9 +412,11 @@ void OverlayClient::readyReadMsgInit(unsigned int length) {
 
 	setupRender();
 */
+	setupRender();
+	qWarning() << "square sent";
 
-    sendYellowSquare();
-    qWarning() << "yellow square sent";
+//	sendYellowSquare();
+//	qWarning() << "yellow square sent";
 
 	Overlay *o = static_cast< Overlay * >(parent());
 	QTimer::singleShot(0, o, SLOT(updateOverlay()));
@@ -488,7 +493,7 @@ void OverlayClient::readyRead() {
 }
 
 void OverlayClient::reset() {
-	if (!uiWidth || !uiHeight || !smMem)
+	if (!uiWidth || !uiHeight) // || !smMem)
 		return;
 
 	qgpiLogo.reset();
@@ -551,8 +556,11 @@ void OverlayClient::setupRender() {
 	qgv.viewport()->setGeometry(0, 0, uiWidth, uiHeight);
 	qgv.setScene(&qgs);
 
+    bArr->fill(0);
 //	smMem->erase();
 
+	int n_header;
+	int n_data;
 	OverlayMsg om;
 	om.omh.uiMagic = OVERLAY_MAGIC_NUMBER;
 	om.omh.uiType  = OVERLAY_MSGTYPE_BLIT;
@@ -561,8 +569,11 @@ void OverlayClient::setupRender() {
 	om.omb.y       = 0;
 	om.omb.w       = uiWidth;
 	om.omb.h       = uiHeight;
-	qlsSocket->write(om.headerbuffer, sizeof(OverlayMsgHeader) + sizeof(OverlayMsgBlit));
-
+	n_header = qlsSocket->write(om.headerbuffer, sizeof(OverlayMsgHeader) + sizeof(OverlayMsgBlit));
+	n_data = qlsSocket->write(bArr->data(), bArr->size());
+	qWarning() << "setupRender() BLIT --- w:" << om.omb.w << "h:" << om.omb.h
+					<< " n_header:" << n_header << "n_data:" << n_data
+					<<" bArr->size():" << bArr->size();
 	reset();
 }
 
@@ -594,7 +605,7 @@ void OverlayClient::render() {
 	const QList< QRectF > region = qlDirty;
 	qlDirty.clear();
 
-	if (!uiWidth || !uiHeight) // || !smMem)
+	if (!uiWidth || !uiHeight)
 		return;
 
 	QRect active;
@@ -615,11 +626,10 @@ void OverlayClient::render() {
 	QRect target = dirty;
 	target.moveTo(0, 0);
 
-//	sendYellowSquare();
-/*	QImage img(reinterpret_cast< unsigned char * >(smMem->data()), uiWidth, uiHeight,
+	QImage img(reinterpret_cast< unsigned char * >(bArr->data()), uiWidth, uiHeight,
 			   QImage::Format_ARGB32_Premultiplied);
 	QImage qi(target.size(), QImage::Format_ARGB32_Premultiplied);
-	qi.fill(0);
+	qi.fill(1);
 
 	QPainter p;
 	p.begin(&qi);
@@ -634,6 +644,8 @@ void OverlayClient::render() {
 	p.drawImage(dirty.x(), dirty.y(), qi);
 	p.end();
 
+	int n_header;
+	int n_data;
 	if (dirty.isValid()) {
 		OverlayMsg om;
 		om.omh.uiMagic = OVERLAY_MAGIC_NUMBER;
@@ -643,7 +655,11 @@ void OverlayClient::render() {
 		om.omb.y       = dirty.y();
 		om.omb.w       = dirty.width();
 		om.omb.h       = dirty.height();
-		qlsSocket->write(om.headerbuffer, sizeof(OverlayMsgHeader) + sizeof(OverlayMsgBlit));
+		n_header = qlsSocket->write(om.headerbuffer, sizeof(OverlayMsgHeader) + sizeof(OverlayMsgBlit));
+		n_data = qlsSocket->write(bArr->data(), bArr->size());
+		qWarning() << "render() BLIT --- w:" << om.omb.w << "h:" << om.omb.h
+					<< " n_header:" << n_header << "n_data:" << n_data
+					<<" bArr->size():" << bArr->size();
 	}
 
 	if (qgpiCursor->isVisible()) {
@@ -667,8 +683,9 @@ void OverlayClient::render() {
 		om.oma.w       = qrLast.width();
 		om.oma.h       = qrLast.height();
 		qlsSocket->write(om.headerbuffer, sizeof(OverlayMsgHeader) + sizeof(OverlayMsgActive));
+    	qWarning() << "render() ACTIVE --- x:" << om.oma.x << "y:" << om.oma.y << "w:" << om.oma.w << "h:" << om.oma.h;
 	}
-*/
+
 	qlsSocket->flush();
 }
 
