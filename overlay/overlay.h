@@ -7,7 +7,9 @@
 #define MUMBLE_INTERNAL_OVERLAY_H_
 
 // overlay message protocol version number
-#define OVERLAY_MAGIC_NUMBER 0x00000005
+#define OVERLAY_MAGIC_NUMBER 0x00000006
+
+#define OVERLAY_N_COLOUR_CHANNELS 4
 
 struct OverlayMsgHeader {
 	unsigned int uiMagic;
@@ -21,33 +23,34 @@ struct OverlayMsgInit {
 	unsigned int uiHeight;
 };
 
-#define OVERLAY_MSGTYPE_SHMEM 1
+/* #define OVERLAY_MSGTYPE_SHMEM 1
 struct OverlayMsgShmem {
 	char a_cName[2048];
 };
+*/
 
-#define OVERLAY_MSGTYPE_BLIT 2
+#define OVERLAY_MSGTYPE_BLIT 1
 struct OverlayMsgBlit {
 	unsigned int x, y, w, h;
 };
 
-#define OVERLAY_MSGTYPE_ACTIVE 3
+#define OVERLAY_MSGTYPE_ACTIVE 2
 struct OverlayMsgActive {
 	unsigned int x, y, w, h;
 };
 
-#define OVERLAY_MSGTYPE_PID 4
+#define OVERLAY_MSGTYPE_PID 3
 struct OverlayMsgPid {
 	unsigned int pid;
 };
 
-#define OVERLAY_MSGTYPE_FPS 5
+#define OVERLAY_MSGTYPE_FPS 4
 struct OverlayMsgFps {
 	float fps;
 };
 #define OVERLAY_FPS_INTERVAL 0.25f
 
-#define OVERLAY_MSGTYPE_INTERACTIVE 6
+#define OVERLAY_MSGTYPE_INTERACTIVE 5
 struct OverlayMsgInteractive {
 	bool state;
 };
@@ -59,7 +62,7 @@ struct OverlayMsg {
 	};
 	union {
 		char msgbuffer[1];
-		struct OverlayMsgShmem oms;
+//		struct OverlayMsgShmem oms;
 		struct OverlayMsgInit omi;
 		struct OverlayMsgBlit omb;
 		struct OverlayMsgActive oma;

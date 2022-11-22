@@ -67,6 +67,7 @@ protected:
 
 	QList< QRectF > qlDirty;
 protected slots:
+	void sendYellowSquare();
 	void readyRead();
 	void changed(const QList< QRectF > &);
 	void render();
