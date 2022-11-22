@@ -65,7 +65,6 @@ public:
 
 OverlayWidget::OverlayWidget(QWidget *p) : QWidget(p) {
 	qlsSocket = nullptr;
-//	smMem     = nullptr;
 	uiWidth = uiHeight = 0;
 
 	setFocusPolicy(Qt::StrongFocus);
@@ -111,16 +110,28 @@ void OverlayWidget::paintEvent(QPaintEvent *) {
 	}
 
 	QPainter painter(this);
-	int w = 100; //sz.width();
-	int h = 100; //sz.height();
+	//int w = 128;
+	//int h = 40;
+	//int w = 512;
+	//int h = 100;
+	//int w = 32;
+	//int h = 16;
+	int w = width();
+	int h = height();
 	painter.fillRect(0, 0, w, h, QColor(128, 0, 128));
 	painter.setClipRect(qrActive);
 	painter.drawImage(0, 0, img);
 }
 
 void OverlayWidget::init(const QSize &sz) {
-	int w = 100; //sz.width();
-	int h = 100;//sz.height();
+	//int w = 128;
+	//int h = 40;
+	//int w = 512;
+	//int h = 100;
+	//int w = 32;
+	//int h = 16;
+	int w = sz.width();
+	int h = sz.height();
 	qWarning() << "Init" << w << h;
 
 	qtWall.start();
@@ -261,16 +272,31 @@ void OverlayWidget::readyRead() {
 					OverlayMsgBlit *omb = &om.omb;
 					length -= sizeof(OverlayMsgBlit);
 
-					qWarning() << "BLIT" << omb->x << omb->y << omb->w << omb->h;
+					qWarning() << "BLIT" << omb->x << omb->y << omb->w << omb->h << omb->n;
 
 //					if (((omb->x + omb->w) > (unsigned int)img.width())
 //						|| ((omb->y + omb->h) > (unsigned int)img.height()))
 //						break;
-					int ret = readClipImage(length);
-					if (ret == -1)
-						qWarning() << "readClipImage() failed";
-					else
-						qWarning() << "readClipImage() succeeded";
+					unsigned char *dst = img.scanLine(0); //img.bits();
+					int lenTotal = omb->w * omb->h * OVERLAY_N_COLOUR_CHANNELS;
+					int chunkLen = omb->n == (int)lenTotal/OVERLAY_CHUNK_SIZE ? lenTotal % OVERLAY_CHUNK_SIZE : OVERLAY_CHUNK_SIZE;
+					memcpy(&dst[omb->n*OVERLAY_CHUNK_SIZE], omb->chunk, chunkLen);
+					for (int i=0; i<((int)chunkLen/4)-1; ++i) {
+						uint32_t * dst32 = reinterpret_cast< uint32_t * >(dst);
+						if (dst32[i] != dst32[i+1]){
+							qWarning() << "BLIT ERROR: different values found in chunk" << omb->n*OVERLAY_CHUNK_SIZE
+							<< "dst32["<<i<<"]: " << QString("0x%1").arg(dst32[i], 8, 16, QLatin1Char( '0' ))
+							<< "dst32["<<i+1<<"]:" << QString("0x%1").arg(dst32[i+1], 8, 16, QLatin1Char( '0' ));
+						}
+					}
+//					qWarning() << "BLIT --- copied the whole chunk, offset:" << omb->n*OVERLAY_CHUNK_SIZE;
+//					qWarning() << "BLIT --- img[0,0]: " << QString("0x%1").arg(reinterpret_cast< uint32_t * >(dst)[(int)omb->w/2*omb->h/2], 8, 16, QLatin1Char( '0' ));
+
+//					int ret = readClipImage(length);
+//					if (ret == -1)
+//						qWarning() << "readClipImage() failed";
+//					else
+//						qWarning() << "readClipImage() succeeded";
 					update();
 				} break;
 				case OVERLAY_MSGTYPE_ACTIVE: {
@@ -286,7 +312,7 @@ void OverlayWidget::readyRead() {
 			}
 			om.omh.iLength = -1;
 			ready -= length;
-			qWarning() << "iLength:" << om.omh.iLength << "--- ready:" << ready;
+//			qWarning() << "iLength:" << om.omh.iLength << "--- ready:" << ready;
 		} else {
 			break;
 		}

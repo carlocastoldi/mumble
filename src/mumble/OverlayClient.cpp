@@ -36,7 +36,6 @@ OverlayClient::OverlayClient(QLocalSocket *socket, QObject *p)
 	connect(qlsSocket, SIGNAL(readyRead()), this, SLOT(readyRead()));
 
 	omMsg.omh.iLength = -1;
-//	smMem             = nullptr;
 	uiWidth = uiHeight = 0;
 
 	uiPid = ~0ULL;
@@ -351,31 +350,63 @@ void OverlayClient::scheduleDelete() {
 	hideGui();
 }
 
+void OverlayClient::sendBuff(OverlayMsg *om, char *buff, int len) {
+	OverlayMsgBlit *omb = &om->omb;
+	int last_chunk_size = len % OVERLAY_CHUNK_SIZE;
+	int n_chunks = (int)len / OVERLAY_CHUNK_SIZE;
+
+	for (int i=0; i<n_chunks;++i) {
+		omb->n = i;
+		memcpy(omb->chunk, &buff[i*OVERLAY_CHUNK_SIZE], OVERLAY_CHUNK_SIZE);
+		qlsSocket->write(om->headerbuffer, sizeof(OverlayMsgHeader) + sizeof(OverlayMsgBlit));
+//		qWarning() << "BLIT --- chunk sent, offset:" << i*OVERLAY_CHUNK_SIZE;
+	}
+
+	if (last_chunk_size != 0) {
+		omb->n = n_chunks;
+		memcpy(omb->chunk, &buff[n_chunks*OVERLAY_CHUNK_SIZE], last_chunk_size);
+		qlsSocket->write(om->headerbuffer, sizeof(OverlayMsgHeader) + sizeof(OverlayMsgBlit));
+//		qWarning() << "BLIT --- chunk sent, offset:" << n_chunks*OVERLAY_CHUNK_SIZE << " last_chunk_size:" << last_chunk_size;
+	}
+	qlsSocket->flush();
+	qWarning() << "sendBuff() --- sent" << n_chunks << "(+1) chunks";
+}
+
 void OverlayClient::sendYellowSquare() {
-	// FIXME: Yellow test square.
 	int x = 0;
 	int y = 0;
-	int w = omMsg.omi.uiWidth;
-	int h = omMsg.omi.uiHeight;
+	int w = (int)omMsg.omi.uiWidth / 2;
+	int h = (int)omMsg.omi.uiHeight / 2;
 	unsigned char buff[w*h*4];
-	for(int i=0;i<100*100;++i) {
-		buff[i*4+0] = 0x00;
-		buff[i*4+1] = 0xff;
-		buff[i*4+2] = 0xff;
-		buff[i*4+3] = 0xe0;
+	for(int i=0;i<w*h;++i) {
+		buff[i*4+0] = 0x00;	// A
+		buff[i*4+1] = 0xff;	// R
+		buff[i*4+2] = 0xff;	// G
+		buff[i*4+3] = 0xe0;	// B
 	}
 
 	OverlayMsg om;
 	om.omh.uiMagic = OVERLAY_MAGIC_NUMBER;
 	om.omh.uiType = OVERLAY_MSGTYPE_BLIT;
-	om.omh.iLength = sizeof(OverlayMsgBlit); //+ sizeof(buff);
+	om.omh.iLength = sizeof(OverlayMsgBlit);
 	om.omb.x = x;
 	om.omb.y = y;
 	om.omb.w = w;
 	om.omb.h = h;
-	qlsSocket->write(om.headerbuffer, sizeof(OverlayMsgHeader) + sizeof(OverlayMsgBlit));
+//	qlsSocket->write(om.headerbuffer, sizeof(OverlayMsgHeader) + sizeof(OverlayMsgBlit));
+//	qlsSocket->write(reinterpret_cast< char * >(buff), sizeof(buff));
+	sendBuff(&om, reinterpret_cast< char * >(buff), w*h*4);
 
-	qlsSocket->write(reinterpret_cast< char * >(buff), sizeof(buff));
+	QRect active = QRect(0, 0, w, h);
+	om.omh.uiMagic = OVERLAY_MAGIC_NUMBER;
+	om.omh.uiType  = OVERLAY_MSGTYPE_ACTIVE;
+	om.omh.iLength = sizeof(OverlayMsgActive);
+	om.oma.x       = active.x();
+	om.oma.y       = active.y();
+	om.oma.w       = active.width();
+	om.oma.h       = active.height();
+	qlsSocket->write(om.headerbuffer, sizeof(OverlayMsgHeader) + sizeof(OverlayMsgActive));
+	qlsSocket->flush();
 }
 
 void OverlayClient::readyReadMsgInit(unsigned int length) {

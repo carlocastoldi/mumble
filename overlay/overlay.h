@@ -23,15 +23,11 @@ struct OverlayMsgInit {
 	unsigned int uiHeight;
 };
 
-/* #define OVERLAY_MSGTYPE_SHMEM 1
-struct OverlayMsgShmem {
-	char a_cName[2048];
-};
-*/
-
+#define OVERLAY_CHUNK_SIZE 2048
 #define OVERLAY_MSGTYPE_BLIT 1
 struct OverlayMsgBlit {
-	unsigned int x, y, w, h;
+	unsigned int x, y, w, h, n;
+	char chunk[OVERLAY_CHUNK_SIZE];
 };
 
 #define OVERLAY_MSGTYPE_ACTIVE 2
@@ -62,7 +58,6 @@ struct OverlayMsg {
 	};
 	union {
 		char msgbuffer[1];
-//		struct OverlayMsgShmem oms;
 		struct OverlayMsgInit omi;
 		struct OverlayMsgBlit omb;
 		struct OverlayMsgActive oma;
