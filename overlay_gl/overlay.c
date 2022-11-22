@@ -342,7 +342,7 @@ static void drawOverlay(Context *ctx, unsigned int width, unsigned int height) {
 
 			switch (ctx->omMsg.omh.uiType) {
 				// shared memory overlay message:
-				case OVERLAY_MSGTYPE_SHMEM: {
+/*				case OVERLAY_MSGTYPE_SHMEM: {
 					struct OverlayMsgShmem *oms = (struct OverlayMsgShmem *) &ctx->omMsg.omi;
 					ods("SHMEM %s", oms->a_cName);
 					releaseMem(ctx);
@@ -379,7 +379,7 @@ static void drawOverlay(Context *ctx, unsigned int width, unsigned int height) {
 					}
 					ods("Failed to map memory");
 				} break;
-				// blit overlay message: blit overlay texture from shared memory to gl-texture var
+*/				// blit overlay message: blit overlay texture from shared memory to gl-texture var
 				case OVERLAY_MSGTYPE_BLIT: {
 					struct OverlayMsgBlit *omb = &ctx->omMsg.omb;
 					ods("BLIT %d %d %d %d", omb->x, omb->y, omb->w, omb->h);
