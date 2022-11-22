@@ -10,7 +10,6 @@
 #include "../../overlay/overlay.h"
 
 #include "IPCUtils.h"
-//#include "SharedMemory.h"
 #include "Timer.h"
 
 #ifdef Q_OS_WIN
@@ -34,7 +33,6 @@ protected:
 	QImage img;
 	OverlayMsg om;
 	QLocalSocket *qlsSocket;
-//	SharedMemory2 *smMem;
 	QTimer *qtTimer;
 	QRect qrActive;
 	QElapsedTimer qtWall;
@@ -51,7 +49,7 @@ protected:
 
 	void keyPressEvent(QKeyEvent *);
 
-	int readClipImage(int);
+	int readClipImage();
 protected slots:
 	void connected();
 	void disconnected();
@@ -110,29 +108,13 @@ void OverlayWidget::paintEvent(QPaintEvent *) {
 	}
 
 	QPainter painter(this);
-	//int w = 100;
-	//int h = 40;
-	//int w = 512;
-	//int h = 100;
-	//int w = 32;
-	//int h = 16;
-	int w = width();
-	int h = height();
-	painter.fillRect(0, 0, w, h, QColor(128, 0, 128));
+	painter.fillRect(0, 0, width(), height(), QColor(128, 0, 128));
 	painter.setClipRect(qrActive);
 	painter.drawImage(0, 0, img);
 }
 
 void OverlayWidget::init(const QSize &sz) {
-	//int w = 100;
-	//int h = 40;
-	//int w = 512;
-	//int h = 100;
-	//int w = 32;
-	//int h = 16;
-	int w = sz.width();
-	int h = sz.height();
-	qWarning() << "Init" << w << h;
+	qWarning() << "Init" << sz.width() << sz.height();
 
 	qtWall.start();
 	iFrameCount    = 0;
@@ -142,13 +124,13 @@ void OverlayWidget::init(const QSize &sz) {
 	m.omh.uiMagic  = OVERLAY_MAGIC_NUMBER;
 	m.omh.uiType   = OVERLAY_MSGTYPE_INIT;
 	m.omh.iLength  = sizeof(OverlayMsgInit);
-	m.omi.uiWidth  = w; //sz.width();
-	m.omi.uiHeight = h; // sz.height();
+	m.omi.uiWidth  = sz.width();
+	m.omi.uiHeight = sz.height();
 
 	if (qlsSocket && qlsSocket->state() == QLocalSocket::ConnectedState)
 		qlsSocket->write(m.headerbuffer, sizeof(OverlayMsgHeader) + sizeof(OverlayMsgInit));
 
-	img = QImage(w, h, QImage::Format_ARGB32);
+	img = QImage(sz.width(), sz.height(), QImage::Format_ARGB32_Premultiplied);
 }
 
 void OverlayWidget::detach() {
@@ -216,7 +198,7 @@ void OverlayWidget::update() {
 	QWidget::update();
 }
 
-int OverlayWidget::readClipImage(int length) {
+int OverlayWidget::readClipImage() {
 	int toRead = om.omb.h * om.omb.w * OVERLAY_N_COLOUR_CHANNELS;
 
 	if (qlsSocket->bytesAvailable() < toRead)
@@ -240,15 +222,16 @@ void OverlayWidget::readyRead() {
 
 	while (true) {
 		int ready = qlsSocket->bytesAvailable();
+//		qWarning() << "ready:" << ready;
 
 		if (om.omh.iLength == -1) {
 			if ((size_t)ready < sizeof(OverlayMsgHeader)) {
-				qWarning() << "ready:" << ready << "--- sizeof(OverlayMsgHeader):" << sizeof(OverlayMsgHeader);
+//				qWarning() << "ready:" << ready << "--- sizeof(OverlayMsgHeader):" << sizeof(OverlayMsgHeader);
 				break;
 			} else {
 				qlsSocket->read(reinterpret_cast< char * >(om.headerbuffer), sizeof(OverlayMsgHeader));
 				if ((om.omh.uiMagic != OVERLAY_MAGIC_NUMBER) || (om.omh.iLength < 0)) {
-					qWarning() << "uiMagic:" << om.omh.uiMagic << "--- iLength:" << om.omh.iLength;
+//					qWarning() << "uiMagic:" << om.omh.uiMagic << "--- iLength:" << om.omh.iLength;
 					detach();
 					return;
 				}
@@ -259,10 +242,10 @@ void OverlayWidget::readyRead() {
 		if (ready >= om.omh.iLength) {
 			int length = qlsSocket->read(om.msgbuffer, om.omh.iLength);
 
-			qWarning() << length << om.omh.uiType;
+//			qWarning() << length << om.omh.uiType;
 
 			if (length != om.omh.iLength) {
-				qWarning() << "length != om.omh.iLength";
+//				qWarning() << "length != om.omh.iLength";
 				detach();
 				return;
 			}
@@ -272,21 +255,23 @@ void OverlayWidget::readyRead() {
 					OverlayMsgBlit *omb = &om.omb;
 					length -= sizeof(OverlayMsgBlit);
 
-					qWarning() << "BLIT" << omb->x << omb->y << omb->w << omb->h << omb->n << omb->s;
+//					qWarning() << "BLIT" << omb->x << omb->y << omb->w << omb->h << omb->n << omb->s;
 
 					if (((omb->x + omb->w) > (unsigned int)img.width())
 						|| ((omb->y + omb->h) > (unsigned int)img.height()))
 						break;
 					int lenTotal = omb->w * omb->h * OVERLAY_N_COLOUR_CHANNELS;
-					int chunkLen = omb->s; //omb->n == (int)lenTotal/OVERLAY_CHUNK_SIZE ? lenTotal % OVERLAY_CHUNK_SIZE : OVERLAY_CHUNK_SIZE;
+					int chunkLen = omb->s;
 					int blitOffset = omb->n*OVERLAY_CHUNK_SIZE;
+					if (lenTotal - blitOffset <= OVERLAY_CHUNK_SIZE)
+						qWarning() << "BLIT" << omb->x << omb->y << omb->w << omb->h << omb->n << omb->s;
 					int width = om.omb.w * OVERLAY_N_COLOUR_CHANNELS;
 					int rowOffset, row, toRead;
 					unsigned char *dst;
 					int chunkOffset = 0;
 					while(chunkOffset < chunkLen) {
 						rowOffset = (blitOffset+chunkOffset) % width;
-						row = (int)((int)(blitOffset+chunkOffset) / width); //OVERLAY_N_COLOUR_CHANNELS;
+						row = (int)((int)(blitOffset+chunkOffset) / width);
 						toRead = std::min((width - rowOffset), chunkLen);
 						dst = img.scanLine(om.omb.y + row) + om.omb.x * OVERLAY_N_COLOUR_CHANNELS;
 //						qWarning() << "dst = img.scanLine(" << om.omb.y + row << ") +" << om.omb.x * OVERLAY_N_COLOUR_CHANNELS
@@ -305,6 +290,8 @@ void OverlayWidget::readyRead() {
 					qWarning() << "ACTIVE" << oma->x << oma->y << oma->w << oma->h;
 
 					qrActive = QRect(oma->x, oma->y, oma->w, oma->h);
+//					img.save("overlay.png", "PNG");
+//					qWarning() << "ACTIVE --- image saved!";
 					update();
 				}; break;
 				default:

@@ -30,7 +30,7 @@ private:
 protected:
 	OverlayMsg omMsg;
 	QLocalSocket *qlsSocket;
-	SharedMemory2 *smMem;
+	QImage *img;
 	QRect qrLast;
 	Timer t;
 
@@ -67,7 +67,7 @@ protected:
 
 	QList< QRectF > qlDirty;
 protected slots:
-	void sendBlit(OverlayMsg *, char *, int);
+	void sendBlit(OverlayMsg *, const uchar *, int);
 	void sendYellowSquare();
 	void readyRead();
 	void changed(const QList< QRectF > &);
