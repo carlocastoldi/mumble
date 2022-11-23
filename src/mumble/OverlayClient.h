@@ -67,7 +67,7 @@ protected:
 
 	QList< QRectF > qlDirty;
 protected slots:
-	void sendBuff(OverlayMsg *, char *, int);
+	void sendBlit(OverlayMsg *, char *, int);
 	void sendYellowSquare();
 	void readyRead();
 	void changed(const QList< QRectF > &);

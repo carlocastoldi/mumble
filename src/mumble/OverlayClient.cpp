@@ -350,13 +350,14 @@ void OverlayClient::scheduleDelete() {
 	hideGui();
 }
 
-void OverlayClient::sendBuff(OverlayMsg *om, char *buff, int len) {
+void OverlayClient::sendBlit(OverlayMsg *om, char *buff, int len) {
 	OverlayMsgBlit *omb = &om->omb;
 	int last_chunk_size = len % OVERLAY_CHUNK_SIZE;
 	int n_chunks = (int)len / OVERLAY_CHUNK_SIZE;
 
 	for (int i=0; i<n_chunks;++i) {
 		omb->n = i;
+		omb->s = OVERLAY_CHUNK_SIZE;
 		memcpy(omb->chunk, &buff[i*OVERLAY_CHUNK_SIZE], OVERLAY_CHUNK_SIZE);
 		qlsSocket->write(om->headerbuffer, sizeof(OverlayMsgHeader) + sizeof(OverlayMsgBlit));
 //		qWarning() << "BLIT --- chunk sent, offset:" << i*OVERLAY_CHUNK_SIZE;
@@ -364,17 +365,18 @@ void OverlayClient::sendBuff(OverlayMsg *om, char *buff, int len) {
 
 	if (last_chunk_size != 0) {
 		omb->n = n_chunks;
+		omb->s = last_chunk_size;
 		memcpy(omb->chunk, &buff[n_chunks*OVERLAY_CHUNK_SIZE], last_chunk_size);
 		qlsSocket->write(om->headerbuffer, sizeof(OverlayMsgHeader) + sizeof(OverlayMsgBlit));
 //		qWarning() << "BLIT --- chunk sent, offset:" << n_chunks*OVERLAY_CHUNK_SIZE << " last_chunk_size:" << last_chunk_size;
 	}
 	qlsSocket->flush();
-	qWarning() << "sendBuff() --- sent" << n_chunks << "(+1) chunks";
+//	qWarning() << "BLIT --- sent" << n_chunks << "(+1) chunks";
 }
 
 void OverlayClient::sendYellowSquare() {
-	int x = 0;
-	int y = 0;
+	int x = (int)omMsg.omi.uiWidth / 4;
+	int y = (int)omMsg.omi.uiHeight / 4;
 	int w = (int)omMsg.omi.uiWidth / 2;
 	int h = (int)omMsg.omi.uiHeight / 2;
 	unsigned char buff[w*h*4];
@@ -393,9 +395,7 @@ void OverlayClient::sendYellowSquare() {
 	om.omb.y = y;
 	om.omb.w = w;
 	om.omb.h = h;
-//	qlsSocket->write(om.headerbuffer, sizeof(OverlayMsgHeader) + sizeof(OverlayMsgBlit));
-//	qlsSocket->write(reinterpret_cast< char * >(buff), sizeof(buff));
-	sendBuff(&om, reinterpret_cast< char * >(buff), w*h*4);
+	sendBlit(&om, reinterpret_cast< char * >(buff), w*h*4);
 
 	QRect active = QRect(0, 0, w, h);
 	om.omh.uiMagic = OVERLAY_MAGIC_NUMBER;
@@ -419,7 +419,7 @@ void OverlayClient::readyReadMsgInit(unsigned int length) {
 	uiWidth  = omi->uiWidth;
 	uiHeight = omi->uiHeight;
 	qrLast   = QRect();
-	qWarning() << "uiWidth:" << uiWidth << "uiHeight:" << uiHeight << "qrLast:" << qrLast;
+	//qWarning() << "uiWidth:" << uiWidth << "uiHeight:" << uiHeight << "qrLast:" << qrLast;
 
 /*
 	delete smMem;
@@ -446,7 +446,6 @@ void OverlayClient::readyReadMsgInit(unsigned int length) {
 */
 
     sendYellowSquare();
-    qWarning() << "yellow square sent";
 
 	Overlay *o = static_cast< Overlay * >(parent());
 	QTimer::singleShot(0, o, SLOT(updateOverlay()));

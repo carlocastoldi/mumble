@@ -110,7 +110,7 @@ void OverlayWidget::paintEvent(QPaintEvent *) {
 	}
 
 	QPainter painter(this);
-	//int w = 128;
+	//int w = 100;
 	//int h = 40;
 	//int w = 512;
 	//int h = 100;
@@ -124,7 +124,7 @@ void OverlayWidget::paintEvent(QPaintEvent *) {
 }
 
 void OverlayWidget::init(const QSize &sz) {
-	//int w = 128;
+	//int w = 100;
 	//int h = 40;
 	//int w = 512;
 	//int h = 100;
@@ -272,31 +272,31 @@ void OverlayWidget::readyRead() {
 					OverlayMsgBlit *omb = &om.omb;
 					length -= sizeof(OverlayMsgBlit);
 
-					qWarning() << "BLIT" << omb->x << omb->y << omb->w << omb->h << omb->n;
+					qWarning() << "BLIT" << omb->x << omb->y << omb->w << omb->h << omb->n << omb->s;
 
-//					if (((omb->x + omb->w) > (unsigned int)img.width())
-//						|| ((omb->y + omb->h) > (unsigned int)img.height()))
-//						break;
-					unsigned char *dst = img.scanLine(0); //img.bits();
+					if (((omb->x + omb->w) > (unsigned int)img.width())
+						|| ((omb->y + omb->h) > (unsigned int)img.height()))
+						break;
 					int lenTotal = omb->w * omb->h * OVERLAY_N_COLOUR_CHANNELS;
-					int chunkLen = omb->n == (int)lenTotal/OVERLAY_CHUNK_SIZE ? lenTotal % OVERLAY_CHUNK_SIZE : OVERLAY_CHUNK_SIZE;
-					memcpy(&dst[omb->n*OVERLAY_CHUNK_SIZE], omb->chunk, chunkLen);
-					for (int i=0; i<((int)chunkLen/4)-1; ++i) {
-						uint32_t * dst32 = reinterpret_cast< uint32_t * >(dst);
-						if (dst32[i] != dst32[i+1]){
-							qWarning() << "BLIT ERROR: different values found in chunk" << omb->n*OVERLAY_CHUNK_SIZE
-							<< "dst32["<<i<<"]: " << QString("0x%1").arg(dst32[i], 8, 16, QLatin1Char( '0' ))
-							<< "dst32["<<i+1<<"]:" << QString("0x%1").arg(dst32[i+1], 8, 16, QLatin1Char( '0' ));
-						}
+					int chunkLen = omb->s; //omb->n == (int)lenTotal/OVERLAY_CHUNK_SIZE ? lenTotal % OVERLAY_CHUNK_SIZE : OVERLAY_CHUNK_SIZE;
+					int blitOffset = omb->n*OVERLAY_CHUNK_SIZE;
+					int width = om.omb.w * OVERLAY_N_COLOUR_CHANNELS;
+					int rowOffset, row, toRead;
+					unsigned char *dst;
+					int chunkOffset = 0;
+					while(chunkOffset < chunkLen) {
+						rowOffset = (blitOffset+chunkOffset) % width;
+						row = (int)((int)(blitOffset+chunkOffset) / width); //OVERLAY_N_COLOUR_CHANNELS;
+						toRead = std::min((width - rowOffset), chunkLen);
+						dst = img.scanLine(om.omb.y + row) + om.omb.x * OVERLAY_N_COLOUR_CHANNELS;
+//						qWarning() << "dst = img.scanLine(" << om.omb.y + row << ") +" << om.omb.x * OVERLAY_N_COLOUR_CHANNELS
+//									<< "rowOffset:" << rowOffset //<< "firstClipRow:" << firstClipRow << "lastClipRow:" << lastClipRow
+//									<< "chunkOffset" << chunkOffset << "row:" << row << "toRead:" << toRead;
+						memcpy(&dst[rowOffset], &omb->chunk[chunkOffset], toRead);
+						chunkOffset += toRead;
 					}
 //					qWarning() << "BLIT --- copied the whole chunk, offset:" << omb->n*OVERLAY_CHUNK_SIZE;
 //					qWarning() << "BLIT --- img[0,0]: " << QString("0x%1").arg(reinterpret_cast< uint32_t * >(dst)[(int)omb->w/2*omb->h/2], 8, 16, QLatin1Char( '0' ));
-
-//					int ret = readClipImage(length);
-//					if (ret == -1)
-//						qWarning() << "readClipImage() failed";
-//					else
-//						qWarning() << "readClipImage() succeeded";
 					update();
 				} break;
 				case OVERLAY_MSGTYPE_ACTIVE: {

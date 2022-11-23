@@ -26,7 +26,7 @@ struct OverlayMsgInit {
 #define OVERLAY_CHUNK_SIZE 2048
 #define OVERLAY_MSGTYPE_BLIT 1
 struct OverlayMsgBlit {
-	unsigned int x, y, w, h, n;
+	unsigned int x, y, w, h, n, s;
 	char chunk[OVERLAY_CHUNK_SIZE];
 };
 
