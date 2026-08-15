@@ -7,7 +7,7 @@ add_executable(OverlayTest OverlayTest.cpp)
 
 set_target_properties(OverlayTest PROPERTIES AUTOMOC ON)
 
-find_pkg(Qt5 COMPONENTS Gui Widgets REQUIRED)
+find_pkg(Qt6 COMPONENTS Gui Widgets REQUIRED)
 
 target_link_libraries(OverlayTest PRIVATE mumble_client_object_lib)
 target_link_libraries(OverlayTest PRIVATE shared Qt5::Test Qt5::Widgets)
